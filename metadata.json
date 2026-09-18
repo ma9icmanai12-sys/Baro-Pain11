@@ -1,0 +1,6 @@
+{
+  "name": "Barometric Pain Monitor",
+  "description": "Real-time barometric pressure tracker, 7-day weather fronts & rain forecast, spoken voice pain predictions, and personal symptom tracker.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
