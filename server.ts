@@ -15,6 +15,90 @@ const WEATHER_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const getNoaaWeatherData = async (lat: number, lon: number) => {
+  const headers = {
+    Accept: 'application/geo+json',
+    'User-Agent': 'BaroPain weather dashboard',
+  };
+  const pointsResponse = await fetch(`https://api.weather.gov/points/${lat},${lon}`, { headers });
+  if (!pointsResponse.ok) {
+    throw new Error(`NOAA points responded with status ${pointsResponse.status}`);
+  }
+
+  const points = await pointsResponse.json();
+  const forecastUrl = points?.properties?.forecast;
+  const hourlyUrl = points?.properties?.forecastHourly;
+  if (!forecastUrl || !hourlyUrl) {
+    throw new Error('NOAA returned incomplete forecast links');
+  }
+
+  const [forecastResponse, hourlyResponse] = await Promise.all([
+    fetch(forecastUrl, { headers }),
+    fetch(hourlyUrl, { headers }),
+  ]);
+  if (!forecastResponse.ok || !hourlyResponse.ok) {
+    throw new Error('NOAA forecast request failed');
+  }
+
+  const forecast = await forecastResponse.json();
+  const hourly = await hourlyResponse.json();
+  const periods = forecast?.properties?.periods || [];
+  const hourlyPeriods = hourly?.properties?.periods || [];
+  const daytimePeriods = periods.filter((period: any) => period.isDaytime).slice(0, 7);
+  if (!daytimePeriods.length || !hourlyPeriods.length) {
+    throw new Error('NOAA returned incomplete forecast data');
+  }
+
+  const weatherCodeFor = (description: string) => {
+    const text = description.toLowerCase();
+    if (text.includes('thunder')) return 95;
+    if (text.includes('snow') || text.includes('ice')) return 71;
+    if (text.includes('rain') || text.includes('shower')) return 61;
+    if (text.includes('fog')) return 45;
+    if (text.includes('cloud')) return 3;
+    return 0;
+  };
+  const windMph = (windSpeed: string) => Number(windSpeed?.match(/[\d.]+/)?.[0] || 0);
+  const hourlySlice = hourlyPeriods.slice(0, 168);
+  const current = hourlySlice[0];
+  const dailyMax = daytimePeriods.map((period: any) => Number(period.temperature || 68));
+  const dailyMin = daytimePeriods.map((period: any, index: number) => {
+    const night = periods.find((item: any) => !item.isDaytime && item.number > period.number && item.number <= period.number + 1);
+    return Number(night?.temperature || dailyMax[index] - 10);
+  });
+
+  return {
+    current: {
+      time: current.startTime,
+      temperature_2m: Number(current.temperature || 68),
+      relative_humidity_2m: 55,
+      wind_speed_10m: windMph(current.windSpeed),
+      surface_pressure: 1013.25,
+      pressure_msl: 1013.25,
+      weather_code: weatherCodeFor(current.shortForecast || ''),
+    },
+    hourly: {
+      time: hourlySlice.map((period: any) => period.startTime),
+      pressure_msl: hourlySlice.map(() => 1013.25),
+      surface_pressure: hourlySlice.map(() => 1013.25),
+      temperature_2m: hourlySlice.map((period: any) => Number(period.temperature || 68)),
+      relative_humidity_2m: hourlySlice.map(() => 55),
+      precipitation_probability: hourlySlice.map((period: any) => Number(period.probabilityOfPrecipitation?.value || 0)),
+    },
+    daily: {
+      time: daytimePeriods.map((period: any) => period.startTime.slice(0, 10)),
+      weather_code: daytimePeriods.map((period: any) => weatherCodeFor(period.shortForecast || '')),
+      temperature_2m_max: dailyMax,
+      temperature_2m_min: dailyMin,
+      precipitation_sum: daytimePeriods.map(() => 0),
+      precipitation_probability_max: daytimePeriods.map((period: any) => Number(period.probabilityOfPrecipitation?.value || 0)),
+      wind_speed_10m_max: daytimePeriods.map((period: any) => windMph(period.windSpeed)),
+    },
+    timezone: points?.properties?.relativeLocation?.properties?.city || 'America/New_York',
+    elevation: 0,
+  };
+};
+
 const getWttrWeatherData = async (lat: number, lon: number) => {
   const response = await fetch(`https://wttr.in/${lat},${lon}?format=j1`, {
     headers: { Accept: 'application/json', 'User-Agent': 'BaroPain/1.0 weather dashboard' },
@@ -117,9 +201,17 @@ const getWeatherData = async (url: string, cacheKey: string) => {
         await wait(Number.isFinite(retryAfter) ? Math.max(retryAfter, 1) * 1000 : 1500 * (attempt + 1));
       }
     } catch (error) {
-      console.warn('[Weather] Open-Meteo unavailable; using wttr.in backup:', error);
       const [lat, lon] = cacheKey.split(',').map(Number);
-      const data = await getWttrWeatherData(lat, lon);
+      let data;
+      if (lat >= 24 && lat <= 50 && lon >= -125 && lon <= -66) {
+        try {
+          data = await getNoaaWeatherData(lat, lon);
+          console.warn('[Weather] Open-Meteo unavailable; using NOAA backup:', error);
+        } catch (noaaError) {
+          console.warn('[Weather] NOAA backup unavailable; using wttr.in:', noaaError);
+        }
+      }
+      data ||= await getWttrWeatherData(lat, lon);
       weatherCache.set(cacheKey, { data, expiresAt: Date.now() + WEATHER_CACHE_TTL_MS });
       return data;
     } finally {
