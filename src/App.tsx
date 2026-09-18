@@ -9,7 +9,6 @@ import { SeniorAdvancedSection } from './components/SeniorAdvancedSection';
 import { PainCalculator, DbHelper, voiceService } from './services';
 import { WeatherMetrics, PainScores, PainLogEntry, LocationItem } from './types';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { VoiceAutoReadBanner } from './components/VoiceAutoReadBanner';
 
 const DEFAULT_LOCATION: LocationItem = {
   name: 'Seattle, WA',
@@ -40,14 +39,10 @@ export default function App() {
   });
 
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = voiceService.subscribe((state) => {
       setIsSpeaking(state.isSpeaking);
-      if (state.audioUrl) {
-        setAudioUrl(state.audioUrl);
-      }
     });
     return () => {
       unsub();
@@ -244,7 +239,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#F4F7FB] text-slate-800 flex flex-col antialiased ${isLargeText ? 'text-lg' : 'text-base'}`}>
+    <div className={`baro-shell min-h-screen flex flex-col antialiased ${isLargeText ? 'text-lg' : 'text-base'}`}>
       {/* Top Friendly Header */}
       <SeniorNavbar
         currentLocation={currentLocation.name}
@@ -255,8 +250,6 @@ export default function App() {
         isGpsActive={isGpsActive}
         isLargeText={isLargeText}
         onToggleLargeText={toggleLargeText}
-        onSpeakForecast={handleSpeakForecast}
-        isSpeaking={isSpeaking}
       />
 
       {/* Main Body */}
@@ -295,15 +288,6 @@ export default function App() {
         {weather && painScores && (
           <>
             {/* Prominent Voice Auto-Read & Status Banner */}
-            <VoiceAutoReadBanner
-              isSpeaking={isSpeaking}
-              onPlayForecast={handleSpeakForecast}
-              onStopForecast={() => voiceService.stop()}
-              locationName={currentLocation.name}
-              audioUrl={audioUrl}
-              forecastScript={voiceService.generateForecastText(currentLocation.name, weather, painScores)}
-            />
-
             {/* 1. Main Traffic-Light Status: Today's Overall Ache Risk */}
             <SeniorMainRisk
               weather={weather}
@@ -345,9 +329,9 @@ export default function App() {
       </main>
 
       {/* Simple, Comforting Footer */}
-      <footer className="border-t-2 border-slate-200 bg-white py-6 px-4 text-center text-slate-500 font-medium text-base space-y-1">
+      <footer className="baro-footer border-t-2 py-6 px-4 text-center text-slate-500 font-medium text-base space-y-1">
         <p className="text-slate-800 font-bold">
-          Weather & Joint Pain Guide • Designed for easy daily reading
+          BaroPain • Designed for easy daily reading
         </p>
         <p className="text-sm text-slate-500">
           Always consult with your family doctor or healthcare provider for medical decisions.

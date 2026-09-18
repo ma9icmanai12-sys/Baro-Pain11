@@ -19,7 +19,7 @@ class VoiceService {
   private currentAudioUrl: string | null = null;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
   private keepAliveInterval: any = null;
-  private rate = 0.9; // Friendly, clear pacing for seniors
+  private rate = 1.05; // Slightly faster, still easy to follow
   private volume = 1.0;
   private audioContext: AudioContext | null = null;
   private currentBlobUrl: string | null = null;
@@ -46,7 +46,7 @@ class VoiceService {
   }
 
   // Retrieve or initialize standard AudioContext with user-gesture unlock
-  private getAudioContext(): AudioContext | null {
+  private async getAudioContext(): Promise<AudioContext | null> {
     if (typeof window === 'undefined') return null;
     try {
       if (!this.audioContext) {
@@ -56,7 +56,7 @@ class VoiceService {
         }
       }
       if (this.audioContext && this.audioContext.state === 'suspended') {
-        this.audioContext.resume();
+        await this.audioContext.resume();
       }
       return this.audioContext;
     } catch {
@@ -65,10 +65,10 @@ class VoiceService {
   }
 
   // 100% Guaranteed Sound: Play an audible melodic chime directly from Web Audio API
-  public playTestChime(): Promise<void> {
-    return new Promise((resolve) => {
+  public async playTestChime(): Promise<void> {
+    return new Promise(async (resolve) => {
       try {
-        const ctx = this.getAudioContext();
+        const ctx = await this.getAudioContext();
         if (!ctx) {
           resolve();
           return;
@@ -109,9 +109,9 @@ class VoiceService {
   }
 
   // Quick soft activation click/chime on button tap
-  public playActivationChime() {
+  public async playActivationChime(): Promise<void> {
     try {
-      const ctx = this.getAudioContext();
+      const ctx = await this.getAudioContext();
       if (!ctx) return;
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
@@ -129,6 +129,18 @@ class VoiceService {
 
       osc.start(now);
       osc.stop(now + 0.22);
+    } catch {}
+  }
+
+  public async playFallbackAudioClip(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = this.generateClientWavBlob();
+      if (!url) return;
+      const audio = new Audio(url);
+      audio.volume = this.volume;
+      audio.muted = false;
+      await audio.play();
     } catch {}
   }
 
@@ -261,16 +273,17 @@ class VoiceService {
 
     // Immediately stop any prior speaking and unlock audio context
     this.stop();
-    this.playActivationChime();
+    void this.playActivationChime();
 
     const sentences = this.splitSentences(fullText);
     if (sentences.length === 0) return;
 
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      // Fallback: If browser lacks Web Speech, use Web Audio melodic chime sequence
+      // Fallback: If browser lacks Web Speech, use a guaranteed audible WAV clip
       this.isSpeaking = true;
       this.activeSentence = sentences[0] || fullText;
       this.notify();
+      void this.playFallbackAudioClip();
       this.playTestChime().then(() => {
         this.stop();
         if (onEnd) onEnd();
@@ -319,13 +332,21 @@ class VoiceService {
         (window as any).__activeUtterances = [utterance];
       }
 
-      // Voice selection: prioritize clear English voices
+      // Voice selection: prefer British female English voices, with broad fallback to any clear English voice
       const voices = window.speechSynthesis.getVoices();
       if (voices && voices.length > 0) {
+        const name = (v: SpeechSynthesisVoice) => v.name.toLowerCase();
+        const lang = (v: SpeechSynthesisVoice) => v.lang.toLowerCase();
+
         const preferredVoice =
-          voices.find((v) => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Siri') || v.name.includes('Samantha'))) ||
-          voices.find((v) => v.lang.startsWith('en')) ||
+          voices.find((v) => lang(v).startsWith('en-gb') && (name(v).includes('female') || name(v).includes('susan') || name(v).includes('hazel') || name(v).includes('aria') || name(v).includes('girl') || name(v).includes('voice'))) ||
+          voices.find((v) => lang(v).startsWith('en-gb') && (name(v).includes('natural') || name(v).includes('google') || name(v).includes('samantha') || name(v).includes('daniel'))) ||
+          voices.find((v) => lang(v).startsWith('en-gb')) ||
+          voices.find((v) => lang(v).startsWith('en-us') && (name(v).includes('samantha') || name(v).includes('aria') || name(v).includes('female') || name(v).includes('natural'))) ||
+          voices.find((v) => lang(v).startsWith('en') && (name(v).includes('natural') || name(v).includes('google') || name(v).includes('siri') || name(v).includes('samantha') || name(v).includes('aria'))) ||
+          voices.find((v) => lang(v).startsWith('en')) ||
           voices[0];
+
         if (preferredVoice) {
           utterance.voice = preferredVoice;
         }

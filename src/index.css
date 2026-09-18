@@ -4,9 +4,72 @@ body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+:root {
+  --baro-ink: #071426;
+  --baro-navy: #0b2340;
+  --baro-blue: #0b78c9;
+  --baro-cyan: #21d4f4;
+  --baro-mint: #79e7b2;
+  --baro-panel: #f4fbff;
+}
+
+.baro-shell {
+  background:
+    linear-gradient(135deg, rgba(33, 212, 244, 0.08), transparent 34%),
+    linear-gradient(315deg, rgba(121, 231, 178, 0.1), transparent 30%),
+    #eaf3fa;
+  color: var(--baro-ink);
+}
+
+.baro-header {
+  background: linear-gradient(135deg, #071426 0%, #0b2340 62%, #0d4875 100%);
+  border-color: rgba(33, 212, 244, 0.45);
+}
+
+.baro-shell main > * {
+  border-color: rgba(11, 120, 201, 0.2);
+}
+
+.baro-shell main > .bg-white,
+.baro-shell main > section,
+.baro-shell main > div {
+  background-color: var(--baro-panel);
+}
+
+.baro-shell .text-slate-900 {
+  color: var(--baro-ink);
+}
+
+.baro-shell .text-sky-800,
+.baro-shell .text-sky-700,
+.baro-shell .text-sky-600 {
+  color: #075b9d;
+}
+
+.baro-shell .bg-sky-600,
+.baro-shell .bg-sky-700 {
+  background-color: var(--baro-blue);
+}
+
+.baro-footer {
+  background: var(--baro-ink);
+  border-color: rgba(33, 212, 244, 0.35);
+}
+
+.baro-footer .text-slate-800 {
+  color: #f4fbff;
+}
+
+.baro-footer .text-slate-500 {
+  color: #a9c7dc;
+}
+
 @layer utilities {
   .font-orbitron {
     font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .font-brand {
+    font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
   }
   .font-tech {
     font-family: 'Share Tech Mono', monospace;

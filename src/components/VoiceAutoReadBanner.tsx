@@ -5,7 +5,6 @@ import {
   Sparkles,
   Play,
   Square,
-  BellRing,
   Gauge,
   FileText,
   ChevronDown,
@@ -33,8 +32,8 @@ export const VoiceAutoReadBanner: React.FC<VoiceAutoReadBannerProps> = ({
   const [activeSentence, setActiveSentence] = useState<string>('');
   const [rate, setRate] = useState<number>(0.9);
   const [volume, setVolume] = useState<number>(1.0);
-  const [isTestingSound, setIsTestingSound] = useState<boolean>(false);
   const [showTranscript, setShowTranscript] = useState<boolean>(false);
+  const [showAudioControls, setShowAudioControls] = useState<boolean>(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Subscribe to real-time voice updates
@@ -48,13 +47,6 @@ export const VoiceAutoReadBanner: React.FC<VoiceAutoReadBannerProps> = ({
       unsub();
     };
   }, []);
-
-  // One-click sound test: plays an audible chime using Web Audio API
-  const handleTestSpeaker = async () => {
-    setIsTestingSound(true);
-    await voiceService.playTestChime();
-    setIsTestingSound(false);
-  };
 
   const handleRateChange = (newRate: number) => {
     setRate(newRate);
@@ -110,131 +102,132 @@ export const VoiceAutoReadBanner: React.FC<VoiceAutoReadBannerProps> = ({
         </div>
 
         {/* Big Action Buttons */}
-        <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap sm:flex-nowrap">
-          {/* Main Play / Stop Button */}
+        <div className="w-full md:w-auto md:min-w-[280px] md:max-w-[420px]">
           {isSpeaking ? (
             <button
               id="btn-banner-stop-voice"
               onClick={onStopForecast}
-              className="flex-1 sm:flex-none px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-base shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 border-2 border-amber-400"
+              className="w-full min-w-0 px-5 py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-base shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 border-2 border-amber-400"
             >
               <Square className="w-5 h-5 fill-white" />
-              <span>Stop Audio</span>
+              <span className="truncate">Stop Audio</span>
             </button>
           ) : (
             <button
               id="btn-banner-play-voice"
               onClick={onPlayForecast}
-              className="flex-1 sm:flex-none px-6 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-95 border-2 border-emerald-500"
+              className="w-full min-w-0 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2.5 cursor-pointer active:scale-95 border-2 border-emerald-500"
             >
               <Play className="w-5 h-5 fill-white" />
-              <span>🔊 Talk Daily Forecast</span>
+              <span className="truncate">🔊 Talk Daily Forecast</span>
             </button>
           )}
-
-          {/* Test Speaker Button (Guaranteed Sound via Web Audio API) */}
-          <button
-            id="btn-test-speaker"
-            onClick={handleTestSpeaker}
-            disabled={isTestingSound}
-            title="Play an audible chime to test if your computer or phone speakers are working"
-            className="px-4 py-3 rounded-2xl bg-white hover:bg-slate-50 border-2 border-emerald-300 text-emerald-900 font-bold text-sm shadow-2xs transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
-          >
-            <BellRing className={`w-4 h-4 text-emerald-600 ${isTestingSound ? 'animate-bounce' : ''}`} />
-            <span>{isTestingSound ? 'Chiming...' : '🔔 Test Speaker'}</span>
-          </button>
         </div>
       </div>
 
-      {/* Embedded Native Audio Controls Bar & Speech Preferences */}
-      <div className="mt-4 pt-3 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white/80 p-3 sm:p-4 rounded-2xl border border-emerald-200/90 shadow-2xs">
-        {/* Native HTML5 Audio Controller Widget */}
-        <div className="flex items-center gap-2.5 flex-1 min-w-[240px]">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">
-            Audio Bar:
-          </span>
-          <audio
-            id="forecast-audio-player"
-            ref={audioRef}
-            controls
-            src={audioUrl || voiceService.generateClientWavBlob()}
-            className="w-full h-10 accent-emerald-600 rounded-lg"
-            onPlay={() => {
-              if (!isSpeaking) onPlayForecast();
-            }}
-            onPause={() => {
-              if (isSpeaking) onStopForecast();
-            }}
-          />
-        </div>
+      <div className="mt-4">
+        <button
+          id="btn-toggle-audio-controls"
+          type="button"
+          onClick={() => setShowAudioControls((prev) => !prev)}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/80 border border-emerald-200 text-emerald-900 font-bold text-sm shadow-xs"
+        >
+          <Volume2 className="w-4 h-4 text-emerald-600" />
+          <span>{showAudioControls ? 'Hide audio controls' : 'Show audio controls'}</span>
+          {showAudioControls ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
 
-        {/* Speed & Volume Sliders for Seniors */}
-        <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap justify-between sm:justify-end shrink-0 text-sm">
-          {/* Speed Presets */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <Gauge className="w-4 h-4 text-slate-500 ml-1.5" />
-            <button
-              id="btn-voice-speed-slow"
-              onClick={() => handleRateChange(0.8)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                rate <= 0.85
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              0.8x Slower
-            </button>
-            <button
-              id="btn-voice-speed-normal"
-              onClick={() => handleRateChange(1.0)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
-                rate > 0.85
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              1.0x Normal
-            </button>
+        {showAudioControls && (
+          <div className="mt-3 pt-3 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-white/80 p-3 sm:p-4 rounded-2xl border border-emerald-200/90 shadow-2xs">
+            {/* Native HTML5 Audio Controller Widget */}
+            <div className="flex items-center gap-2.5 flex-1 min-w-[240px]">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                Audio Bar:
+              </span>
+              <audio
+                id="forecast-audio-player"
+                ref={audioRef}
+                controls
+                src={audioUrl || voiceService.generateClientWavBlob()}
+                className="w-full h-10 accent-emerald-600 rounded-lg"
+                onPlay={() => {
+                  if (!isSpeaking) onPlayForecast();
+                }}
+                onPause={() => {
+                  if (isSpeaking) onStopForecast();
+                }}
+              />
+            </div>
+
+            {/* Speed & Volume Sliders for Seniors */}
+            <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap justify-between sm:justify-end shrink-0 text-sm">
+              {/* Speed Presets */}
+              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <Gauge className="w-4 h-4 text-slate-500 ml-1.5" />
+                <button
+                  id="btn-voice-speed-slow"
+                  onClick={() => handleRateChange(0.8)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                    rate <= 0.85
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  0.8x Slower
+                </button>
+                <button
+                  id="btn-voice-speed-normal"
+                  onClick={() => handleRateChange(1.0)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                    rate > 0.85
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  1.0x Normal
+                </button>
+              </div>
+
+              {/* Volume Slider */}
+              <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                {volume === 0 ? (
+                  <VolumeX className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <Volume2 className="w-4 h-4 text-emerald-600" />
+                )}
+                <input
+                  id="voice-volume-slider"
+                  aria-label="Spoken audio volume slider"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={volume}
+                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                  className="w-20 h-1.5 accent-emerald-600 bg-slate-300 rounded-lg cursor-pointer"
+                />
+                <span className="text-xs font-bold text-slate-600 w-8 text-right">
+                  {Math.round(volume * 100)}%
+                </span>
+              </div>
+
+              {/* Transcript Toggle Button */}
+              <button
+                id="btn-toggle-transcript"
+                onClick={() => setShowTranscript(!showTranscript)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-500" />
+                <span>Transcript</span>
+                {showTranscript ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
           </div>
-
-          {/* Volume Slider */}
-          <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-            {volume === 0 ? (
-              <VolumeX className="w-4 h-4 text-slate-400" />
-            ) : (
-              <Volume2 className="w-4 h-4 text-emerald-600" />
-            )}
-            <input
-              id="voice-volume-slider"
-              aria-label="Spoken audio volume slider"
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={volume}
-              onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-              className="w-20 h-1.5 accent-emerald-600 bg-slate-300 rounded-lg cursor-pointer"
-            />
-            <span className="text-xs font-bold text-slate-600 w-8 text-right">
-              {Math.round(volume * 100)}%
-            </span>
-          </div>
-
-          {/* Transcript Toggle Button */}
-          <button
-            id="btn-toggle-transcript"
-            onClick={() => setShowTranscript(!showTranscript)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition cursor-pointer"
-          >
-            <FileText className="w-3.5 h-3.5 text-slate-500" />
-            <span>Transcript</span>
-            {showTranscript ? (
-              <ChevronUp className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5" />
-            )}
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Active Spoken Sentence Highlight Banner */}

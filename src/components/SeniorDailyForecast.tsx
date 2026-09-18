@@ -21,22 +21,17 @@ import {
   Thermometer,
 } from 'lucide-react';
 import { DailyForecastItem } from '../types';
-import { VoiceForecastButton } from './VoiceForecastButton';
 
 interface SeniorDailyForecastProps {
   forecast: DailyForecastItem[];
   isLargeText: boolean;
   embedded?: boolean;
-  onSpeakForecast?: () => void;
-  isSpeaking?: boolean;
 }
 
 export const SeniorDailyForecast: React.FC<SeniorDailyForecastProps> = ({
   forecast,
   isLargeText,
   embedded = false,
-  onSpeakForecast,
-  isSpeaking = false,
 }) => {
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(0);
 
@@ -103,16 +98,8 @@ export const SeniorDailyForecast: React.FC<SeniorDailyForecastProps> = ({
               </div>
             </div>
 
-            {/* Compact Ache Score Badge + Voice Button */}
+            {/* Compact Ache Score Badge */}
             <div className="flex items-center gap-2.5 self-start sm:self-auto shrink-0 flex-wrap sm:flex-nowrap">
-              {onSpeakForecast && (
-                <VoiceForecastButton
-                  onSpeak={onSpeakForecast}
-                  isSpeaking={isSpeaking}
-                  compact={true}
-                />
-              )}
-
               <div className="flex items-center gap-2.5 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
                 <div className="text-right">
                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">

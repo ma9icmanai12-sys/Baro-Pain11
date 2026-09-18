@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Sun, MapPin, RefreshCw, Search, Navigation, ZoomIn, ZoomOut, Check } from 'lucide-react';
+import { MapPin, RefreshCw, Search, Navigation, ZoomIn, ZoomOut, Check } from 'lucide-react';
 import { LocationItem } from '../types';
-import { VoiceForecastButton } from './VoiceForecastButton';
 
 interface SeniorNavbarProps {
   currentLocation: string;
@@ -12,8 +11,6 @@ interface SeniorNavbarProps {
   isGpsActive: boolean;
   isLargeText: boolean;
   onToggleLargeText: () => void;
-  onSpeakForecast?: () => void;
-  isSpeaking?: boolean;
 }
 
 const POPULAR_TOWNS: LocationItem[] = [
@@ -36,8 +33,6 @@ export const SeniorNavbar: React.FC<SeniorNavbarProps> = ({
   isGpsActive,
   isLargeText,
   onToggleLargeText,
-  onSpeakForecast,
-  isSpeaking = false,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -61,34 +56,26 @@ export const SeniorNavbar: React.FC<SeniorNavbarProps> = ({
   };
 
   return (
-    <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-50 shadow-sm">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          {/* Logo & Title */}
-          <div className="flex items-center gap-3.5 self-start md:self-auto">
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-300 flex items-center justify-center text-amber-600 shadow-sm shrink-0">
-              <Sun className="w-7 h-7" />
-            </div>
-            <div>
-              <h1 className={`font-bold text-slate-900 leading-tight ${isLargeText ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'}`}>
-                Weather & Joint Pain Guide
-              </h1>
-              <p className={`text-slate-600 font-medium ${isLargeText ? 'text-base' : 'text-sm'}`}>
-                Easy-to-read daily weather & arthritis forecast
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Action Controls for Seniors */}
-          <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto justify-start md:justify-end">
-            {/* Talk Daily Forecast Button */}
-            {onSpeakForecast && (
-              <VoiceForecastButton
-                onSpeak={onSpeakForecast}
-                isSpeaking={isSpeaking}
-                compact={true}
+    <header className="baro-header border-b-2 sticky top-0 z-50 shadow-lg">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 w-full">
+            {/* Logo & Title */}
+            <div className="flex items-center justify-center gap-3.5 self-center text-center">
+              <img
+                src="/BaroPain_logo.png"
+                alt="BaroPain logo"
+                className="w-16 h-16 rounded-full object-cover shadow-[0_0_20px_rgba(33,212,244,0.35)] shrink-0"
               />
-            )}
+              <div>
+                <h1 className={`font-brand font-bold leading-tight bg-gradient-to-r from-white via-cyan-100 to-sky-400 bg-clip-text text-transparent ${isLargeText ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}>
+                  BaroPain
+                </h1>
+              </div>
+            </div>
+
+            {/* Quick Action Controls for Seniors */}
+            <div className="flex items-center justify-center gap-2.5 flex-wrap w-full">
 
             {/* Current Town Pill & Change Button */}
             <button
@@ -141,7 +128,9 @@ export const SeniorNavbar: React.FC<SeniorNavbarProps> = ({
             >
               <RefreshCw className={`w-5 h-5 text-slate-700 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
+            </div>
           </div>
+
         </div>
       </div>
 

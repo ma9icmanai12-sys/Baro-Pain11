@@ -77,6 +77,14 @@ export const SeniorMainRisk: React.FC<SeniorMainRiskProps> = ({
 
   return (
     <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-md p-5 sm:p-7 space-y-6">
+      {onSpeakForecast && (
+        <VoiceForecastButton
+          onSpeak={onSpeakForecast}
+          isSpeaking={isSpeaking}
+          className="w-full justify-center"
+        />
+      )}
+
       {/* Top Date & Location Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-4">
         <div>
@@ -120,15 +128,6 @@ export const SeniorMainRisk: React.FC<SeniorMainRiskProps> = ({
           </div>
         </div>
 
-        {/* Prominent Voice Speaker Button embedded inside Today's Risk Card */}
-        {onSpeakForecast && (
-          <div className="w-full sm:w-auto shrink-0 flex sm:flex-col items-center justify-end">
-            <VoiceForecastButton
-              onSpeak={onSpeakForecast}
-              isSpeaking={isSpeaking}
-            />
-          </div>
-        )}
       </div>
 
       {/* 7-Day Forecast & Pain Predictions (Right under Good Day for Your Joints) */}
@@ -137,8 +136,6 @@ export const SeniorMainRisk: React.FC<SeniorMainRiskProps> = ({
           forecast={weather.forecastDays}
           isLargeText={isLargeText}
           embedded
-          onSpeakForecast={onSpeakForecast}
-          isSpeaking={isSpeaking}
         />
       )}
 
