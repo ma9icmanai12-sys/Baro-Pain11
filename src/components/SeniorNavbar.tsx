@@ -65,7 +65,7 @@ export const SeniorNavbar: React.FC<SeniorNavbarProps> = ({
               <img
                 src="/BaroPain_logo.png"
                 alt="BaroPain logo"
-                className="w-16 h-16 rounded-full object-cover shadow-[0_0_20px_rgba(33,212,244,0.35)] shrink-0"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-[0_0_24px_rgba(33,212,244,0.45)] shrink-0"
               />
               <div>
                 <h1 className={`font-brand font-bold leading-tight bg-gradient-to-r from-white via-cyan-100 to-sky-400 bg-clip-text text-transparent ${isLargeText ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'}`}>
