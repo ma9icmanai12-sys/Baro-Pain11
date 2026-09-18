@@ -7,7 +7,56 @@ import { createServer as createViteServer } from 'vite';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
+
+const weatherCache = new Map<string, { data: any; expiresAt: number }>();
+const weatherRequests = new Map<string, Promise<any>>();
+const WEATHER_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getWeatherData = async (url: string, cacheKey: string) => {
+  const cached = weatherCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.data;
+  }
+
+  const existingRequest = weatherRequests.get(cacheKey);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = (async () => {
+    try {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const response = await fetch(url, {
+          headers: {
+            Accept: 'application/json',
+            'User-Agent': 'BaroPain/1.0 weather dashboard',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          weatherCache.set(cacheKey, { data, expiresAt: Date.now() + WEATHER_CACHE_TTL_MS });
+          return data;
+        }
+
+        if (response.status !== 429 || attempt === 2) {
+          throw new Error(`Open-Meteo responded with status ${response.status}`);
+        }
+
+        const retryAfter = Number(response.headers.get('retry-after'));
+        await wait(Number.isFinite(retryAfter) ? Math.max(retryAfter, 1) * 1000 : 1500 * (attempt + 1));
+      }
+    } finally {
+      weatherRequests.delete(cacheKey);
+    }
+  })();
+
+  weatherRequests.set(cacheKey, request);
+  return request;
+};
 
 app.use(express.json());
 
@@ -39,12 +88,8 @@ app.get('/api/weather', async (req: Request, res: Response) => {
     // Open-Meteo forecast API with hourly MSL pressure, surface pressure, and 7-day forecast
     const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,pressure_msl,weather_code&hourly=pressure_msl,surface_pressure,temperature_2m,relative_humidity_2m,precipitation_probability&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&past_days=1&forecast_days=7&timezone=auto`;
 
-    const weatherRes = await fetch(openMeteoUrl);
-    if (!weatherRes.ok) {
-      throw new Error(`Open-Meteo responded with status ${weatherRes.status}`);
-    }
-
-    const data = await weatherRes.json();
+    const cacheKey = `${lat.toFixed(3)},${lon.toFixed(3)}`;
+    const data = await getWeatherData(openMeteoUrl, cacheKey);
     const hpaList: number[] = data?.hourly?.pressure_msl || [];
     const timeList: string[] = data?.hourly?.time || [];
 
