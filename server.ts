@@ -15,6 +15,73 @@ const WEATHER_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const getWttrWeatherData = async (lat: number, lon: number) => {
+  const response = await fetch(`https://wttr.in/${lat},${lon}?format=j1`, {
+    headers: { Accept: 'application/json', 'User-Agent': 'BaroPain/1.0 weather dashboard' },
+  });
+  if (!response.ok) {
+    throw new Error(`wttr.in responded with status ${response.status}`);
+  }
+
+  const backup = await response.json();
+  const current = backup?.current_condition?.[0];
+  const days = backup?.weather || [];
+  if (!current || !days.length) {
+    throw new Error('wttr.in returned incomplete weather data');
+  }
+
+  const weatherCodeFor = (description: string, code: string) => {
+    const text = `${description} ${code}`.toLowerCase();
+    if (text.includes('thunder')) return 95;
+    if (text.includes('snow') || text.includes('ice')) return 71;
+    if (text.includes('rain') || text.includes('drizzle')) return 61;
+    if (text.includes('fog') || text.includes('mist')) return 45;
+    if (text.includes('cloud') || text.includes('overcast')) return 3;
+    return 0;
+  };
+
+  const hourly = days.flatMap((day: any) =>
+    (day.hourly || []).map((hour: any) => ({
+      time: `${day.date}T${String(Number(hour.time || 0)).padStart(4, '0').slice(0, 2)}:00`,
+      pressure: Number(hour.pressure || current.pressure || 1013.25),
+      temperature: Number(hour.tempF || current.temp_F || 68),
+      humidity: Number(hour.humidity || current.humidity || 55),
+      precipitationProbability: Number(hour.chanceofrain || 0),
+    }))
+  );
+
+  return {
+    current: {
+      time: new Date().toISOString(),
+      temperature_2m: Number(current.temp_F || 68),
+      relative_humidity_2m: Number(current.humidity || 55),
+      wind_speed_10m: Number(current.windspeedMiles || 0),
+      surface_pressure: Number(current.pressure || 1013.25),
+      pressure_msl: Number(current.pressure || 1013.25),
+      weather_code: weatherCodeFor(current.weatherDesc?.[0]?.value || '', current.weatherCode || ''),
+    },
+    hourly: {
+      time: hourly.map((item: any) => item.time),
+      pressure_msl: hourly.map((item: any) => item.pressure),
+      surface_pressure: hourly.map((item: any) => item.pressure),
+      temperature_2m: hourly.map((item: any) => item.temperature),
+      relative_humidity_2m: hourly.map((item: any) => item.humidity),
+      precipitation_probability: hourly.map((item: any) => item.precipitationProbability),
+    },
+    daily: {
+      time: days.map((day: any) => day.date),
+      weather_code: days.map((day: any) => weatherCodeFor(day.hourly?.[4]?.weatherDesc?.[0]?.value || '', day.hourly?.[4]?.weatherCode || '')),
+      temperature_2m_max: days.map((day: any) => Number(day.maxtempF || 68)),
+      temperature_2m_min: days.map((day: any) => Number(day.mintempF || 50)),
+      precipitation_sum: days.map((day: any) => Number(day.totalSnow_cm || 0)),
+      precipitation_probability_max: days.map((day: any) => Math.max(...(day.hourly || []).map((hour: any) => Number(hour.chanceofrain || 0)), 0)),
+      wind_speed_10m_max: days.map((day: any) => Math.max(...(day.hourly || []).map((hour: any) => Number(hour.windspeedMiles || 0)), 0)),
+    },
+    timezone: backup?.nearest_area?.[0]?.region?.[0]?.value || 'auto',
+    elevation: 0,
+  };
+};
+
 const getWeatherData = async (url: string, cacheKey: string) => {
   const cached = weatherCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) {
@@ -49,6 +116,12 @@ const getWeatherData = async (url: string, cacheKey: string) => {
         const retryAfter = Number(response.headers.get('retry-after'));
         await wait(Number.isFinite(retryAfter) ? Math.max(retryAfter, 1) * 1000 : 1500 * (attempt + 1));
       }
+    } catch (error) {
+      console.warn('[Weather] Open-Meteo unavailable; using wttr.in backup:', error);
+      const [lat, lon] = cacheKey.split(',').map(Number);
+      const data = await getWttrWeatherData(lat, lon);
+      weatherCache.set(cacheKey, { data, expiresAt: Date.now() + WEATHER_CACHE_TTL_MS });
+      return data;
     } finally {
       weatherRequests.delete(cacheKey);
     }
